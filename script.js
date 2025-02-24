@@ -1,13 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Google Apps Script Web Uygulaması URL'si
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbwIdqd7lNuOJD0RDJPgjm_iAL-w7hI7FffGfOxJnvHmvsPN6TUvXQGV8X_5VuAlIU_Z/exec';
-    
     // Yükleniyor mesajını göster
     document.getElementById('rides-list').innerHTML = '<div class="loading">Veriler yükleniyor...</div>';
     
-    // Verileri çek
-    fetch(apiUrl)
-        .then(response => response.json())
+    // Google Apps Script URL'si
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbwIdqd7lNuOJD0RDJPgjm_iAL-w7hI7FffGfOxJnvHmvsPN6TUvXQGV8X_5VuAlIU_Z/exec';
+    
+    // JSONP ile veri çekme
+    fetchJSONP(apiUrl)
         .then(data => {
             if (data && data.rides && data.rides.length > 0) {
                 displayRidesFromArray(data.rides);
@@ -22,6 +21,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<div class="error">Veriler yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</div>';
         });
 });
+
+// JSONP ile veri çekme fonksiyonu
+function fetchJSONP(url) {
+    return new Promise((resolve, reject) => {
+        // Benzersiz bir callback adı oluştur
+        const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        
+        // Callback fonksiyonunu global scope'a ekle
+        window[callbackName] = function(data) {
+            // Temizlik
+            delete window[callbackName];
+            document.body.removeChild(script);
+            // Veriyi döndür
+            resolve(data);
+        };
+        
+        // Script elementini oluştur
+        const script = document.createElement('script');
+        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = reject;
+        document.body.appendChild(script);
+    });
+}
 
 function displayRidesFromArray(rides) {
     const ridesList = document.getElementById('rides-list');
