@@ -2,14 +2,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Yükleniyor mesajını göster
     document.getElementById('rides-list').innerHTML = '<div class="loading">Veriler yükleniyor...</div>';
     
-    // Google Apps Script URL'si
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbwIdqd7lNuOJD0RDJPgjm_iAL-w7hI7FffGfOxJnvHmvsPN6TUvXQGV8X_5VuAlIU_Z/exec';
+    // SheetDB API URL'si - BURAYA KENDİ API URL'NİZİ EKLEYİN
+    const apiUrl = 'https://sheetdb.io/api/v1/nikwzdap8rqt0';
     
-    // JSONP ile veri çekme
-    fetchJSONP(apiUrl)
+    // Verileri çek
+    fetch(apiUrl)
+        .then(response => response.json())
         .then(data => {
-            if (data && data.rides && data.rides.length > 0) {
-                displayRidesFromArray(data.rides);
+            if (data && data.length > 0) {
+                // SheetDB verileri doğrudan dizi olarak döndürür
+                const rides = data.map(item => {
+                    return {
+                        id: item.id || '',
+                        name: item.name || 'İsim belirtilmemiş',
+                        email: item.email || '',
+                        phone: item.phone || '',
+                        when: item.when || 'Belirtilmemiş',
+                        where: item.where || 'Belirtilmemiş',
+                        note: item.note || ''
+                    };
+                });
+                displayRidesFromArray(rides);
             } else {
                 document.getElementById('rides-list').innerHTML = 
                     '<div class="no-rides">Henüz hiç ilan bulunmuyor.</div>';
@@ -17,33 +30,26 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Veri çekme hatası:', error);
-            document.getElementById('rides-list').innerHTML = 
-                '<div class="error">Veriler yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</div>';
+            
+            // Hata durumunda statik JSON dosyasını kullan
+            console.log('Yedek veri kaynağına geçiliyor...');
+            fetch('rides.json')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.rides && data.rides.length > 0) {
+                        displayRidesFromArray(data.rides);
+                    } else {
+                        document.getElementById('rides-list').innerHTML = 
+                            '<div class="no-rides">Henüz hiç ilan bulunmuyor.</div>';
+                    }
+                })
+                .catch(backupError => {
+                    console.error('Yedek veri çekme hatası:', backupError);
+                    document.getElementById('rides-list').innerHTML = 
+                        '<div class="error">Veriler yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.</div>';
+                });
         });
 });
-
-// JSONP ile veri çekme fonksiyonu
-function fetchJSONP(url) {
-    return new Promise((resolve, reject) => {
-        // Benzersiz bir callback adı oluştur
-        const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-        
-        // Callback fonksiyonunu global scope'a ekle
-        window[callbackName] = function(data) {
-            // Temizlik
-            delete window[callbackName];
-            document.body.removeChild(script);
-            // Veriyi döndür
-            resolve(data);
-        };
-        
-        // Script elementini oluştur
-        const script = document.createElement('script');
-        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
-        script.onerror = reject;
-        document.body.appendChild(script);
-    });
-}
 
 function displayRidesFromArray(rides) {
     const ridesList = document.getElementById('rides-list');
